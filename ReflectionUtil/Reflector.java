@@ -1,4 +1,4 @@
-package com.yourpackage;
+package com.joojn.hackclient.util;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -67,7 +67,7 @@ public class Reflector {
         @param find if set to <code>true</code>, it searches through every super class with `getDeclared`
         @return this
      **/
-    public Reflector findAll(boolean find)
+    public Reflector searchAll(boolean find)
     {
         this.allClasses = find;
         return this;
@@ -81,7 +81,7 @@ public class Reflector {
             ExistExpression.ExpressionCheck<Reflector> ifExists
     )
     {
-        return new ExistExpression<Reflector>(
+        return new ExistExpression<>(
                 simpleExists(),
                 ifExists,
                 this
@@ -197,7 +197,7 @@ public class Reflector {
         int[] currentIndex = { 0 };
         Method[] foundedMethod = new Method[1];
 
-        classWalker(clazz, (currentClass) -> {
+        classWalker(this.clazz, (currentClass) -> {
             for(Method method : currentClass.getDeclaredMethods())
             {
                 if((name == null || method.getName().equals(name)) && method.getReturnType().equals(clazz) && currentIndex[0]++ == index)
@@ -283,7 +283,7 @@ public class Reflector {
          * Executes lambda if method exists
          * @return ExistExpression allows usage of orElse / orElseThrow methods
          */
-        public ExistExpression<MethodReflector> exists(
+        public <T> ExistExpression<MethodReflector> exists(
                 ExistExpression.ExpressionCheck<MethodReflector> ifExists
         )
         {
@@ -365,37 +365,59 @@ public class Reflector {
     {
         public interface ExpressionCheck<T>
         {
+            Object execute(T value);
+        }
+
+        public interface VoidExpressionCheck<T>
+        {
             void execute(T value);
         }
 
-        private final boolean exists;
-        private final T       value;
+        private final boolean            exists;
+        private final T                  value;
+        private /* */ Object             returnedValue = null;
 
         public ExistExpression(boolean exists, ExpressionCheck<T> check, T value) {
-            if(exists) check.execute(value);
-
             this.exists = exists;
             this.value = value;
+
+            if(exists) {
+                this.returnedValue = check.execute(value);
+            }
         }
 
         /**
          * If value is value, executes current lambda expression
          * @param orElse lambda expression
          */
-        public void orElse(ExpressionCheck<T> orElse)
+        public ExistExpression<T> orElse(VoidExpressionCheck<T> orElse)
         {
             if(!exists) orElse.execute(value);
+
+            return this;
         }
 
         /**
          * If value is value, throws #NotExistException with custom message
          * @param message custom message of exception
          */
-        public void orElseThrow(String message)
+        public ExistExpression<T> orElseThrow(String message)
         {
             if(!exists) throw new NotExistException(
                     message
             );
+
+            return this;
+        }
+
+        /**
+         * Returns the returned value from exists method
+         * @return returnedValue
+         * @param <S> data type of returnedValue
+         */
+        public <S> S build()
+        {
+            return (S) this.returnedValue;
         }
 
         private static class NotExistException extends RuntimeException
