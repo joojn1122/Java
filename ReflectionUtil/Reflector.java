@@ -322,6 +322,9 @@ public class Reflector {
             if(walker.walk(currentClass)) break;
         }
         while((currentClass = currentClass.getSuperclass()) != Object.class);
+        
+        // don't forget about Object class
+        walker.walk(Object.class);
     }
 
     private Method findMethod(Class<?> clazz, String name, Class<?>... classes)
